@@ -1,0 +1,63 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "lambdaBucketName": {
+      "Type": "String",
+      "Description": "The S3 bucket name where the zipfile for the function is stored"
+    },
+    "lambdaZipPath": {
+      "Type": "String",
+      "Description": "The path to the zipfile inside the bucket."
+    },
+    "lambdaFunctionName": {
+      "Type": "String",
+      "Description": "The name or label to give the Lambda function"
+    },
+    "lambdaZipObjectVersion": {
+      "Type": "String",
+      "Description": "VersionId of the zipFile inside S3"
+    }
+  },
+  "Resources": {
+    "CreateJWTValidatorLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+              "Service": ["lambda.amazonaws.com", "edgelambda.amazonaws.com"]
+            },
+            "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ]
+      }
+    },
+    "CreateAndReturnJWTValidatorLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": { "Ref": "lambdaFunctionName"},
+        "Code": {
+          "S3Bucket": { "Ref": "lambdaBucketName" },
+          "S3Key": { "Ref": "lambdaZipPath" },
+          "S3ObjectVersion": { "Ref": "lambdaZipObjectVersion" },
+        },
+        "Handler": "index.handler",
+        "Runtime": "nodejs10.x",
+        "Timeout": "5",
+        "Role": { "Fn::GetAtt": [ "CreateJWTValidatorLambdaRole", "Arn" ] }
+      }
+    }
+  },
+  "Outputs": {
+    "JWTValidatorOutput": {
+      "Description": "ARN of the Java Web Token verification function",
+      "Value": { "Fn::GetAtt": [ "CreateAndReturnJWTValidatorLambdaFunction", "Arn" ] },
+      "Export": { "Name" : {"Fn::Sub": "${AWS::StackName}-JWTValidatorArn" }}
+    }
+  }
+}

@@ -1,0 +1,12 @@
+.git/
+.gitignore
+__tests__/
+jest.config.js
+package-lock.json
+package.json
+junit.xml
+coverage/
+build/
+reports/
+__mocks__/
+__templates__/

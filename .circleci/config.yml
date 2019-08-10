@@ -1,0 +1,120 @@
+version: 2.1
+orbs:
+  aws-cli: circleci/aws-cli@0.1.13
+jobs:
+  build:
+    docker:
+      - image: circleci/node:latest
+    executor:
+      name: aws-cli/default
+      python-version: "3.5"
+    steps:
+      - checkout
+      - run:
+          name: Create FQDN and stack name environment variables
+          command: |
+            RAW_STACK_NAME="${CLOUDFRONT_SITE_NAME}-${ROUTE53_DOMAIN_NAME}-${FUNCTION_NAME}-${CIRCLE_BRANCH:-local}"; \
+            STACK_NAME=$(echo $RAW_STACK_NAME | tr -cs "[:alnum:][:cntrl:]" "-"); \
+            DISTRIBUTION_DOMAIN="https://${CLOUDFRONT_SITE_NAME}.${ROUTE53_DOMAIN_NAME}"; \
+            echo "${STACK_NAME}"; \
+            echo "${DISTRIBUTION_DOMAIN}"; \
+            echo "export STACK_NAME=${STACK_NAME}" >> $BASH_ENV; \
+            echo "export DISTRIBUTION_DOMAIN=$DISTRIBUTION_DOMAIN" >> $BASH_ENV; \
+            echo "export LAMBDA_S3_PREFIX=${STACK_NAME}/" >> $BASH_ENV; \
+            echo "export LAMBDA_FUNCTION_NAME=${STACK_NAME}" >> $BASH_ENV; \
+      - run:
+          name: update-npm
+          command: 'sudo npm install -g npm@latest'
+      - restore_cache: # special step to restore the dependency cache
+          # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
+          key: dependency-cache-{{ checksum "nodejs/package.json" }}
+      - run:
+          name: install-node-dependencies
+          command: cd nodejs && npm install
+      - save_cache: # special step to save the dependency cache
+          key: dependency-cache-{{ checksum "nodejs/package.json" }}
+          paths:
+            - ./nodejs/node_modules
+      - run: # run tests
+          name: run npm test
+          command: cd nodejs && npm test
+          environment:
+            JEST_JUNIT_OUTPUT: "reports/junit/junit.xml"
+      - store_artifacts: # special step to save test results as as artifact
+          # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
+          path: nodejs/reports/junit
+          prefix: tests
+      - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
+          path: nodejs/coverage
+          prefix: coverage
+      - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
+          path: nodejs/reports/junit
+      - run:
+          name: Clean up env.js
+          command: rm nodejs/env.js
+      - run: # Package env.sh for production deployment since Lambda@Edge doesn't support environment variables
+          name: Get JWT Keys from Cognito
+          command: |
+            echo 'export COGNITO_JWKS=$(cd nodejs && node generatejwt.js)' >> $BASH_ENV;
+      - run:
+          name: Generate environment variables file
+          command: cd nodejs && node_modules/.bin/envsub __templates__/env.js.template env.js
+      - run:
+          name: ENV sanity check
+          command: cat nodejs/env.js
+      - run:
+          name: package the output
+          command: cd nodejs && npm run pack
+      - run:
+          name: create build directory
+          command: mkdir -p nodejs/build
+      - run:
+          name: copy output to a file with the branchname
+          command: mv nodejs/$(cat nodejs/package.json | jq -r '.name').zip nodejs/build/$LAMBDA_FUNCTION_NAME.$CIRCLE_BRANCH.zip
+      - run: ls -alh nodejs/
+      - aws-cli/install
+      - aws-cli/configure:
+          profile-name: example
+      - run:
+          name: Deploy Zip File to lambda function S3 Bucket
+          command: |
+            if [[ ! -z $LAMBDA_S3_BUCKET_NAME ]]; then
+              $(aws s3api head-bucket --bucket $LAMBDA_S3_BUCKET_NAME);
+              if [[ $? == 0 ]]; then
+                 aws s3 cp nodejs/build/$STACK_NAME.$CIRCLE_BRANCH.zip \
+                 s3://$LAMBDA_S3_BUCKET_NAME/$LAMBDA_S3_PREFIX$STACK_NAME.zip;
+              else
+                 echo "bucket does not exist or permission is not there to view it.";
+                 exit 1;
+              fi
+            fi
+      - run:
+          name: Deploy Lambda Function to AWS
+          command: |
+            aws cloudformation deploy --stack-name $STACK_NAME \
+            --template-file ./CloudFormation/lambda.json \
+            --parameter-overrides \
+            "lambdaBucketName=$LAMBDA_S3_BUCKET_NAME" \
+            "lambdaZipPath=$LAMBDA_S3_PREFIX$LAMBDA_FUNCTION_NAME.zip" \
+            "lambdaFunctionName=$LAMBDA_FUNCTION_NAME" \
+            "lambdaZipObjectVersion=$(aws s3api list-object-versions \
+            --bucket $LAMBDA_S3_BUCKET_NAME \
+            --prefix $LAMBDA_S3_PREFIX$LAMBDA_FUNCTION_NAME.zip \
+            --max-items 1 | jq -r '.Versions[0].VersionId')" \
+            "buildVersion=$CIRCLE_BUILD_NUM" \
+            --capabilities CAPABILITY_IAM
+      - run:
+          name: Create a new version of the lambda code
+          command: |
+            echo 'export LAMBDA_VER=$(aws lambda publish-version \
+            --function-name $LAMBDA_FUNCTION_NAME | jq -r '.Version')' >> $BASH_ENV
+      - run:
+          name: Create a tag reflecting the build number
+          command: |
+            source $BASH_ENV;
+            aws lambda create-alias --function-name $LAMBDA_FUNCTION_NAME \
+            --name "cideployed-${CIRCLE_BUILD_NUM:-$LAMBDA_VER}" \
+            --function-version $LAMBDA_VER
+      - run:
+          name: Clean up
+          command: cd nodejs && npm run cleanup

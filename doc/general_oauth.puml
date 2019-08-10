@@ -1,0 +1,16 @@
+@startuml
+actor User
+participant "CF:/" as SLASH
+User -> SLASH : GET /<path?>
+SLASH -> SLASH : Authorization header,\ncookie:sessiontoken\nor ?authorization=parameter?
+SLASH --> User : 302 redirect to Cognito\n/oauth2/authorize?\nclient=<clientid>\n&redirect_uri="/"\n&response_type=code\n&scope=email,openid\n&state=<path>
+User -> Cognito : POST /oauth2/authorize?\nclient=<clientid>\n&redirect_uri="/"\n&response_type=code\n&scope=email,openid\n&state=<path>
+...
+Cognito --> User : 302 redirect to https://CF/?code=<code>
+User -> SLASH : GET /?code=<code>
+SLASH -> Cognito : POST /oauth2/token?\ncode=<code>&client_id=<clientid>\n(Basic Auth header w/ client_id/secret)
+Cognito --> SLASH : JWT {access_token, refresh_token, id_token}
+SLASH -> S3 : GET index.html header:newauth=<access_token>
+S3 --> SLASH : index.html
+SLASH --> User : index.html header:\nSet-Cookie: sessiontoken=<access_token>
+@enduml

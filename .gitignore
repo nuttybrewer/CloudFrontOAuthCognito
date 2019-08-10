@@ -56,6 +56,17 @@ typings/
 
 # dotenv environment variables file
 .env
+.deploy.env
+env.js
+
 
 # next.js build output
 .next
+
+# OSX filesystem annoyance
+.DS_Store
+
+# Build directory
+build/
+
+junit.xml

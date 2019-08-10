@@ -1,0 +1,42 @@
+{
+  "name": "aws-cloudfront-jwtvalidator",
+  "version": "1.0.0",
+  "description": "A simple JWT validator taken from AWS blog post by Alex Tomic and Cameron Worrell",
+  "main": "index.js",
+  "engines": {
+    "node": "=8.10"
+  },
+  "scripts": {
+    "test": "node_modules/.bin/envsub --env-file __templates__/test.env __templates__/env.js.template env.js && jest --collectCoverage=true --ci --runInBand --reporters=default --reporters=jest-junit",
+    "cleanup": "rm -rf node_modules/ build/ coverage/ junit.xml *.zip env.js",
+    "pack": "npm-pack-zip"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nuttybrewer/CPJT-600-1901.git"
+  },
+  "author": "Patrick Ethier",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/nuttybrewer/CloudFrontJWTValidator/issues"
+  },
+  "homepage": "https://github.com/nuttybrewer/CloudFrontJWTValidator#readme",
+  "dependencies": {
+    "jsonwebtoken": "^8.5.1",
+    "node-fetch": "^2.6.0",
+    "util": "^0.12.1"
+  },
+  "devDependencies": {
+    "envsub": "^3.0.9",
+    "jest": "^24.8.0",
+    "jest-junit": "^6.4.0",
+    "fetch-mock": "^7.3.9",
+    "jwk-to-pem": "^2.0.1",
+    "npm-pack-zip": "^1.2.7"
+  },
+  "bundleDependencies": {
+    "jsonwebtoken": "^8.5.1",
+    "node-fetch": "^2.6.0",
+    "util": "^0.12.1"
+  }
+}

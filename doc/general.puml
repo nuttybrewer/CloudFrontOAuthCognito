@@ -1,0 +1,9 @@
+@startuml
+actor User
+participant "CF:/" as SLASH
+User -> SLASH : GET /<path?>
+SLASH -> SLASH : Authorization header?
+SLASH -> S3 : GET /<path?> or /index.html
+S3 --> SLASH : /<path?> or /index.html
+SLASH --> User : /<path?> or /index.html
+@enduml
