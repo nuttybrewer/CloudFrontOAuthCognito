@@ -28,9 +28,9 @@
   },
   "devDependencies": {
     "envsub": "^3.0.9",
-    "jest": "^24.8.0",
-    "jest-junit": "^6.4.0",
-    "fetch-mock": "^7.3.9",
+    "fetch-mock": "^7.5.1",
+    "jest": "^24.9.0",
+    "jest-junit": "^8.0.0",
     "jwk-to-pem": "^2.0.1",
     "npm-pack-zip": "^1.2.7"
   },
