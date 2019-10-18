@@ -115,19 +115,23 @@ exports.oauth_state_check = function(token) {
   return null;
 }
 
-exports.oauth_redirect = function(uri, provider) {
+exports.oauth_redirect = function(uri, provider, referer) {
   // Check if the URI is in the /oauth/cognito so we're not creating a loop
   // If it is, set the requesting_uri to /
-  var requesting_uri = uri;
-  if (uri.startsWith("/oauth/cognito")) {
-    requesting_uri = "/";
+  var requesting_uri = "/" // sane default
+  if (referer) {
+    requesting_uri = referer;
+  }
+  else if (!uri.startsWith("/oauth")) {
+    requesting_uri = uri
   }
 
+  console.log(`Redirecting with requesting_uri ${requesting_uri}`)
   // Set the state with a token that will be valid for 5 minutes
   // If the user takes longer than 5 minutes on signup, they will have to start all over again
   var payload = { iat: Math.floor(Date.now() / 1000 ), exp: Math.floor(Date.now()/1000) + 300, token_use: "oauth", requesting_uri: requesting_uri };
   const mytoken = jsonwebtoken.sign(payload, env.JWTKEY);
-  console.log("oauth_redirect creating state token " + mytoken);
+  console.log(`Sending ${provider.local_oauth_name} with state key ${provider.provider_state_key}`);
   return redirect_response = {
     status: 302,
     statusDescription: 'Please authenticate',
@@ -144,11 +148,11 @@ exports.oauth_redirect = function(uri, provider) {
   };
 }
 
-exports.final_redirect = function(uri, token, provider) {
+exports.final_redirect = function(next_uri, token, provider) {
   // Check if the URI is in the /oauth/cognito so we're not creating a loop
   // If it is, set the requesting_uri to /
-  var requesting_uri = uri;
-  if (uri.startsWith("/oauth/cognito")) {
+  var requesting_uri = next_uri;
+  if (!requesting_uri || requesting_uri.startsWith("/oauth")) {
     requesting_uri = "/";
   }
 

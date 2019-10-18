@@ -68,7 +68,7 @@ test('Cognito Request', (done) => {
 const returnEvent = {
   "headers": {
     "location": [{
-      "value": "https://myidp.somewhere.internal/login?client_id=myoauth2clientid&redirect_uri=http://localhost:3000/oauth/cognito/access_token&response_type=code&scope=openid+email&STATE=abcdef0123456789"
+      "value": "https://myidp.somewhere.internal/login?client_id=myoauth2clientid&redirect_uri=http://localhost:3000/oauth/cognito/access_token&response_type=code&scope=openid+email&state=abcdef0123456789"
     }]
   },
   "status": 302,
@@ -269,7 +269,7 @@ test('Github access_token reply with bad authentication', (done) => {
 const returnEvent = {
   "headers": {
     "location": [{
-      "value": "https://myidp.somewhere.internal/login?client_id=myoauth2clientid&redirect_uri=http://localhost:3000/oauth/cognito/access_token&response_type=code&scope=openid+email&STATE=abcdef0123456789"
+      "value": "https://myidp.somewhere.internal/login?client_id=myoauth2clientid&redirect_uri=http://localhost:3000/oauth/cognito/access_token&response_type=code&scope=openid+email&state=abcdef0123456789"
     }]
   },
   "status": 302,
